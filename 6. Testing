@@ -1,0 +1,110 @@
+# STEP 6: Test the Model on New Emails
+# ------------------------------------
+
+import joblib
+
+# Load the saved model and vectorizer
+model = joblib.load("phishing_model.pkl")
+vectorizer = joblib.load("tfidf_vectorizer.pkl")
+
+# Example emails to test
+new_emails = [
+    "Congratulations! You have won a $1000 Walmart gift card. Click here to claim your prize.",
+    "Meeting scheduled for tomorrow at 10 AM. Please review the attached agenda.",
+    "Urgent: Your bank account has been suspended. Verify your details immediately.",
+]
+
+# Transform the new emails using the same TF-IDF vectorizer
+new_emails_vec = vectorizer.transform(new_emails)
+
+# Predict
+predictions = model.predict(new_emails_vec)
+
+# Display results
+for email, label in zip(new_emails, predictions):
+    print("\n📩 Email:", email)
+    print("🔍 Prediction:", "Phishing" if label == 1 else "Non-Phishing")
+
+
+# Fake-email test runner (Kaggle) -----------------------------------
+import os, re
+import pandas as pd
+import joblib
+import numpy as np
+
+# 1) Try common filenames where model/vectorizer might be saved
+candidates = [
+    ("/kaggle/working/phishing_model.pkl", "/kaggle/working/tfidf_vectorizer.pkl"),
+    ("/kaggle/working/phishing_email_model.pkl", "/kaggle/working/tfidf_vectorizer.pkl"),
+    ("/kaggle/working/models/phishing_model.pkl", "/kaggle/working/models/tfidf_vectorizer.pkl")
+]
+
+model_path = vect_path = None
+for m, v in candidates:
+    if os.path.exists(m) and os.path.exists(v):
+        model_path, vect_path = m, v
+        break
+
+if model_path is None:
+    # list files for debugging
+    print("Files in /kaggle/working:", os.listdir("/kaggle/working"))
+    raise FileNotFoundError("Could not find model/vectorizer .pkl files in /kaggle/working. "
+                            "Place them there or update the paths in the candidates list.")
+
+# 2) Load model & vectorizer
+model = joblib.load(model_path)
+vectorizer = joblib.load(vect_path)
+print("Loaded model:", model_path)
+print("Loaded vectorizer:", vect_path)
+
+# 3) Fake emails (id, subject, body)
+fake_emails = [
+    {"id":"phish_01","subject":"Urgent: Account Verification Required",
+     "body":"Dear user,\nWe detected suspicious activity on your bank account. Click http://fake.verify/ to verify now."},
+    {"id":"phish_02","subject":"Congratulations! You Won a Gift Card",
+     "body":"You have been selected to receive a $1000 gift card. Click here to claim: http://claim.example"},
+    {"id":"legit_01","subject":"Team meeting agenda for Friday",
+     "body":"Hi team,\nPlease find attached the agenda for Friday's meeting. See you at 10 AM.\nThanks, Asha"},
+    {"id":"legit_02","subject":"Invoice for March - ACME Supplies",
+     "body":"Hello,\nPlease find the invoice for March attached. Let me know if you need clarification.\nRegards, Accounts"},
+    {"id":"promo_01","subject":"Limited time offer on electronics",
+     "body":"Hi Customer,\nWe’re running a sale this weekend. Visit our official store for deals."}
+]
+
+df = pd.DataFrame(fake_emails)
+df["text"] = df["subject"].fillna("") + " " + df["body"].fillna("")
+
+# 4) Minimal cleaning (match training pipeline — adapt if your pipeline did more)
+def simple_clean(s):
+    s = str(s).lower()
+    s = re.sub(r"http\S+|www\S+","", s)        # remove URLs
+    s = re.sub(r"\S+@\S+","", s)               # remove emails
+    s = re.sub(r"[^a-z0-9\s]"," ", s)          # keep alphanum + spaces
+    s = re.sub(r"\s+"," ", s).strip()
+    return s
+
+df["clean_text"] = df["text"].apply(simple_clean)
+
+# 5) Vectorize & predict
+X_fake = vectorizer.transform(df["clean_text"])
+pred = model.predict(X_fake)
+
+# probabilities if available
+if hasattr(model, "predict_proba"):
+    probs = model.predict_proba(X_fake)[:,1]
+elif hasattr(model, "decision_function"):
+    from scipy.special import expit
+    probs = expit(model.decision_function(X_fake))
+else:
+    probs = pred.astype(float)
+
+df["pred_label"] = pred
+df["pred_prob_phishing"] = np.round(probs, 4)
+df["pred_text"] = df["pred_label"].map({1:"Phishing", 0:"Non-Phishing"})
+
+# 6) Show & save
+print("\nPredictions:")
+display(df[["id","subject","body","pred_text","pred_prob_phishing"]])
+out = "/kaggle/working/fake_email_predictions.csv"
+df.to_csv(out, index=False)
+print(f"\nSaved results to: {out}")
