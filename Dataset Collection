@@ -1,0 +1,128 @@
+#STEP 1 : COLLECTING THE DATASETS AND LOADING
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+
+# Path to dataset
+path = "/kaggle/input/enron-email-dataset"
+
+# File name inside dataset
+file_path = os.path.join(path, "emails.csv")
+
+# Load the dataset
+df = pd.read_csv(file_path)
+
+print("Dataset loaded from:", file_path)
+
+# Print first 100 records
+print("\nFirst 10 records:")
+print(df.head(10))
+
+# (Optional) Save first 100 records to a new CSV
+output_path = "/kaggle/working/enron_first_10.csv"
+df.head(10).to_csv(output_path, index=False)
+print("\nFirst 10 records saved to:", output_path)
+
+
+# Path to dataset
+path = "/kaggle/input/lingspam-dataset"
+
+# File name inside dataset
+file_path = os.path.join(path, "messages.csv")
+
+# Load the full dataset
+df = pd.read_csv(file_path)
+
+print("Dataset loaded from:", file_path)
+
+print("\nFirst 10 records:")
+print(df.head(10))
+
+output_path = "/kaggle/working/messages_first_10.csv"
+df.head(10).to_csv(output_path, index=False)
+print("\nFirst 10 records saved to:", output_path)
+
+
+# Path to dataset
+path = "/kaggle/input/preprocessed-trec-2007-public-corpus-dataset"
+
+# File name inside dataset
+file_path = os.path.join(path, "processed_data.csv")
+
+# Load the dataset
+df = pd.read_csv(file_path)
+
+print("Dataset loaded from:", file_path)
+
+print("\nFirst 10 records:")
+print(df.head(10))
+
+output_path = "/kaggle/working/trec2007_first_10.csv"
+df.head(10).to_csv(output_path, index=False)
+print("\nFirst 10 records saved to:", output_path)
+
+
+
+# Enron dataset
+enron = pd.read_csv("/kaggle/input/enron-email-dataset/emails.csv")
+print("Enron columns:", enron.columns.tolist())
+
+# Ling-Spam dataset
+lingspam = pd.read_csv("/kaggle/input/lingspam-dataset/messages.csv")
+print("Ling-Spam columns:", lingspam.columns.tolist())
+
+# TREC dataset
+trec = pd.read_csv("/kaggle/input/preprocessed-trec-2007-public-corpus-dataset/processed_data.csv")
+print("TREC columns:", trec.columns.tolist())
+
+
+
+# Load datasets
+enron = pd.read_csv("/kaggle/input/enron-email-dataset/emails.csv")
+lingspam = pd.read_csv("/kaggle/input/lingspam-dataset/messages.csv")
+trec = pd.read_csv("/kaggle/input/preprocessed-trec-2007-public-corpus-dataset/processed_data.csv")
+
+# ✅ Enron: take all rows, assume non-phishing (0)
+enron_df = enron[["message"]].copy()
+enron_df["phishing"] = 0  
+
+# ✅ Ling-Spam: map labels to phishing (spam=1, ham=0)
+lingspam_df = lingspam[["message", "label"]].copy()
+lingspam_df["phishing"] = lingspam_df["label"].apply(lambda x: 1 if x == 1 else 0)
+lingspam_df = lingspam_df.drop(columns=["label"])
+
+# ✅ TREC: map labels to phishing (spam=1, ham=0)
+trec_df = trec[["message", "label"]].copy()
+trec_df["phishing"] = trec_df["label"].apply(lambda x: 1 if x == 1 else 0)
+trec_df = trec_df.drop(columns=["label"])
+
+# ✅ Combine (all rows)
+df = pd.concat([enron_df, lingspam_df, trec_df], ignore_index=True)
+
+print("Final Combined Dataset Shape:", df.shape)
+print(df.head(20))
+
+combined_df = df.copy()
+
+# ✅ Count phishing (1) and non-phishing (0) emails
+counts = combined_df["phishing"].value_counts()
+
+print("📊 Email Distribution:")
+print(f"Non-Phishing (0): {counts.get(0, 0)}")
+print(f"Phishing     (1): {counts.get(1, 0)}")
+
+
+# ✅ Step 1: Combine datasets (assuming you already loaded enron_df, lingspam_df, trec_df)
+combined_df = pd.concat([
+    enron_df[["message", "phishing"]],
+    lingspam_df[["message", "phishing"]],
+    trec_df[["message", "phishing"]]
+], ignore_index=True)
+
+print("✅ Combined dataset created with all rows.")
+print("Final shape before prepro[cessing:", combined_df.shape)
