@@ -3,7 +3,7 @@
 📧 Phishing Email Detection Using Machine Learning
 
 A machine learning–based system designed to detect and classify phishing emails, including AI-generated and human-written threats.
-The model is trained using real-world datasets such as Ling-Spam, Enron Emai, and Preprocessed trec, and uses NLP techniques to analyze email content for malicious patterns.
+The model is trained using real-world datasets such as Ling-Spam, Enron Email, and Preprocessed trec, and uses NLP techniques to analyze email content for malicious patterns.
 
 **🚀 Features**
 
@@ -13,7 +13,7 @@ The model is trained using real-world datasets such as Ling-Spam, Enron Emai, an
 
 -> Uses TF-IDF vectorization + Logistic Regression
 
--> Real-world datasets (Ling-Spam, Enron Emai, and Preprocessed trec)
+-> Real-world datasets (Ling-Spam, Enron Email, and Preprocessed trec)
 
 -> Gmail IMAP integration to read real-time incoming emails
 
@@ -31,11 +31,11 @@ The model is trained using real-world datasets such as Ling-Spam, Enron Emai, an
 
 1. Dataset Collection
 
--> PhishTank
+-> Ling-Spam
 
--> Enron Email Dataset
+-> Enron Email
 
--> SpamAssassin Corpus
+-> Preprocessed trec
 
 2. Preprocessing
 
@@ -62,10 +62,6 @@ The model is trained using real-world datasets such as Ling-Spam, Enron Emai, an
 -> phishing_model.pkl
 
 -> tfidf_vectorizer.pkl
-
-6. Pipeline Building
-
--> Combined into a single phishing_pipeline.pkl
 
 **📥 Real-Time Email Scanning**
 
