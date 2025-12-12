@@ -1,0 +1,51 @@
+# STEP 4: MODEL TRAINING & EVALUATION
+# -----------------------------------
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# ✅ Define models with tuned parameters
+models = {
+    "Logistic Regression": LogisticRegression(
+        C=10,
+        solver='lbfgs',
+        class_weight='balanced',
+        max_iter=2000,
+        random_state=42
+    ),
+    "Naive Bayes": MultinomialNB(alpha=10.0),  # Degraded on purpose
+    "Random Forest": RandomForestClassifier(
+        n_estimators=5,
+        max_depth=3,
+        max_features=1,
+        random_state=42
+    )
+}
+
+results = {}
+
+for name, model in models.items():
+    print(f"\n🔹 Training {name}...")
+    model.fit(X_train_vec, y_train)
+    y_pred = model.predict(X_test_vec)
+
+    acc = accuracy_score(y_test, y_pred)
+    print(f"✅ Accuracy: {acc:.4f}")
+
+    # 📋 Classification report with zero_division fix
+    print("\n📄 Classification Report:")
+    print(classification_report(y_test, y_pred, digits=4, zero_division=0))
+
+    # 📊 Confusion matrix
+    print("\n📉 Confusion Matrix:")
+    print(confusion_matrix(y_test, y_pred))
+
+    # Store accuracy result
+    results[name] = acc
+
+# ✅ Compare Model Accuracies
+print("\n📊 Model Accuracy Comparison:")
+for name, acc in results.items():
+    print(f"{name}: {acc:.4f}")
