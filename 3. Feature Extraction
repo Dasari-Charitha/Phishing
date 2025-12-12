@@ -1,0 +1,27 @@
+# STEP 3: TRAIN-TEST SPLIT & VECTORIZATION
+# ----------------------------------------
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# X = features (cleaned text), y = labels (phishing)
+X = combined_df["clean_message"]
+y = combined_df["phishing"]
+
+# ✅ Split dataset (70% train, 30% test) with stratify to keep class balance
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=42, stratify=y
+)
+
+print("Train set size:", X_train.shape[0])
+print("Test set size:", X_test.shape[0])
+print("Class distribution in train:\n", y_train.value_counts())
+print("Class distribution in test:\n", y_test.value_counts())
+
+# ✅ Convert text into TF-IDF vectors
+vectorizer = TfidfVectorizer(max_features=5000)  # limit features for speed
+X_train_vec = vectorizer.fit_transform(X_train)
+X_test_vec = vectorizer.transform(X_test)
+
+print("\nTF-IDF Vectorization Complete.")
+print("Training vector shape:", X_train_vec.shape)
+print("Testing vector shape:", X_test_vec.shape)
