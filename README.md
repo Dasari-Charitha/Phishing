@@ -8,7 +8,9 @@ The model is trained using real-world datasets such as Ling-Spam, Enron Emai, an
 **🚀 Features**
 
 -> Detects phishing vs. non-phishing emails using ML classification
+
 -> Supports AI-generated and human-crafted phishing detection
+
 -> Uses TF-IDF vectorization + Logistic Regression
 -> Real-world datasets (Ling-Spam, Enron Emai, and Preprocessed trec)
 -> Gmail IMAP integration to read real-time incoming emails
