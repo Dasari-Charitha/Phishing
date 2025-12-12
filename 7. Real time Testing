@@ -1,0 +1,175 @@
+# ------------------------------
+# Gmail IMAP Phishing Prediction
+# Colab-ready Version with Automatic Pipeline Creation
+# ------------------------------
+
+import imaplib
+import email
+from email.header import decode_header
+import re
+import pandas as pd
+from bs4 import BeautifulSoup
+import joblib
+import os
+from sklearn.pipeline import Pipeline
+from google.colab import files
+
+# ------------------------------
+# CONFIGURATION
+# ------------------------------
+IMAP_HOST = "imap.gmail.com"
+EMAIL_ACCOUNT = "your mail"
+APP_PASSWORD = "google app password"   # Use your Gmail App Password
+MAILBOX = "INBOX"
+FETCH_CRITERIA = 'UNSEEN'  # 'UNSEEN' or 'ALL'
+MAX_EMAILS = 50
+
+# Paths to files
+PIPELINE_PATH = "/content/phishing_pipeline.pkl"
+MODEL_PATH = "/content/phishing_model.pkl"
+VECT_PATH = "/content/tfidf_vectorizer.pkl"
+
+# ------------------------------
+# Helper functions
+# ------------------------------
+
+def clean_text_for_model(s):
+    s = str(s).lower()
+    s = re.sub(r"http\S+|www\S+", " ", s)
+    s = re.sub(r"\S+@\S+", " ", s)
+    s = re.sub(r"[^a-z0-9\s]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+def extract_email_body(message):
+    if message.is_multipart():
+        parts = []
+        for part in message.walk():
+            ctype = part.get_content_type()
+            disp = str(part.get("Content-Disposition"))
+            if ctype == "text/plain" and "attachment" not in disp:
+                try:
+                    parts.append(part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8", errors="ignore"))
+                except:
+                    pass
+            elif ctype == "text/html" and "attachment" not in disp:
+                try:
+                    html = part.get_payload(decode=True).decode(part.get_content_charset() or "utf-8", errors="ignore")
+                    text = BeautifulSoup(html, "html.parser").get_text(separator=" ")
+                    parts.append(text)
+                except:
+                    pass
+        return " ".join(parts).strip()
+    else:
+        ctype = message.get_content_type()
+        payload = message.get_payload(decode=True)
+        if not payload:
+            return ""
+        try:
+            text = payload.decode(message.get_content_charset() or "utf-8", errors="ignore")
+        except:
+            text = str(payload)
+        if ctype == "text/html":
+            text = BeautifulSoup(text, "html.parser").get_text(separator=" ")
+        return text.strip()
+
+# ------------------------------
+# Load or create pipeline
+# ------------------------------
+
+if os.path.exists(PIPELINE_PATH):
+    pipeline = joblib.load(PIPELINE_PATH)
+    print("Loaded existing pipeline from phishing_pipeline.pkl")
+else:
+    # Check if separate model & vectorizer exist
+    if not os.path.exists(MODEL_PATH) or not os.path.exists(VECT_PATH):
+        raise FileNotFoundError(
+            f"Cannot create pipeline because neither {PIPELINE_PATH} nor model/vectorizer files exist."
+        )
+    model = joblib.load(MODEL_PATH)
+    vectorizer = joblib.load(VECT_PATH)
+    pipeline = Pipeline([
+        ('vectorizer', vectorizer),
+        ('classifier', model)
+    ])
+    joblib.dump(pipeline, PIPELINE_PATH)
+    print("Created and saved pipeline from model + vectorizer.")
+
+# ------------------------------
+# Connect to Gmail via IMAP
+# ------------------------------
+
+mail = imaplib.IMAP4_SSL(IMAP_HOST)
+try:
+    mail.login(EMAIL_ACCOUNT, APP_PASSWORD)
+except imaplib.IMAP4.error as e:
+    raise SystemExit("IMAP login failed. Check email/app password.") from e
+
+mail.select(MAILBOX)
+typ, data = mail.search(None, FETCH_CRITERIA)
+if typ != 'OK':
+    raise SystemExit("IMAP search failed.")
+
+ids = data[0].split()
+ids = ids[-MAX_EMAILS:]
+print(f"Total emails fetched: {len(ids)}")
+
+rows = []
+
+for num in ids[::-1]:
+    typ, msg_data = mail.fetch(num, '(RFC822)')
+    if typ != 'OK':
+        continue
+    raw = msg_data[0][1]
+    message = email.message_from_bytes(raw)
+
+    sub, enc = decode_header(message.get("Subject"))[0]
+    if isinstance(sub, bytes):
+        try:
+            subject = sub.decode(enc or "utf-8", errors="ignore")
+        except:
+            subject = sub.decode("utf-8", errors="ignore")
+    else:
+        subject = str(sub)
+
+    from_ = message.get("From")
+    body = extract_email_body(message)
+    text = f"{subject} {body}"
+    clean = clean_text_for_model(text)
+
+    pred = pipeline.predict([clean])[0]
+    prob = float(pipeline.predict_proba([clean])[:,1])
+
+    rows.append({
+        "email_id": num.decode(),
+        "from": from_,
+        "subject": subject,
+        "pred": int(pred),
+        "prob_phishing": prob,
+        "snippet": clean[:500]
+    })
+
+mail.logout()
+
+# ------------------------------
+# Create DataFrame
+# ------------------------------
+
+if not rows:
+    print("No emails fetched or processed. DataFrame will be empty.")
+    df = pd.DataFrame(columns=["email_id","from","subject","pred","prob_phishing","snippet"])
+else:
+    df = pd.DataFrame(rows)
+    df["label_text"] = df["pred"].map({1:"Phishing", 0:"Non-Phishing"})
+    df = df[["email_id","from","subject","label_text","prob_phishing","snippet"]]
+
+print("Predictions for fetched emails:")
+display(df)
+
+# ------------------------------
+# Save CSV and download
+# ------------------------------
+
+out_path = "/content/imap_predictions.csv"
+df.to_csv(out_path, index=False)
+print("Saved results to", out_path)
