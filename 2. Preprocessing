@@ -1,0 +1,39 @@
+#STEP 2 : PREPROCESSING
+
+import pandas as pd
+import re
+from sklearn.model_selection import train_test_split
+
+def clean_text(text):
+    text = str(text).lower()                              # lowercase
+    text = re.sub(r"http\S+|www\S+", "url", text)         # replace URLs
+    text = re.sub(r"\S+@\S+", "emailaddr", text)          # replace emails
+    text = re.sub(r"\d+", "number", text)                 # replace numbers
+    text = re.sub(r"[^a-z\s]", "", text)                  # keep only letters
+    text = re.sub(r"\s+", " ", text).strip()              # normalize spaces
+    return text
+
+combined_df["clean_message"] = combined_df["message"].apply(clean_text)
+
+# ✅ Keep only cleaned message + phishing
+processed_df = combined_df[["clean_message", "phishing"]].copy()
+
+print("\n✅ Preprocessing done on ALL rows.")
+print("Final shape after preprocessing:", processed_df.shape)
+print("Sample records:")
+print(processed_df.head(10))
+
+# ✅ Save to CSV
+output_path = "/kaggle/working/processed_emails.csv"
+processed_df.to_csv(output_path, index=False)
+print(f"\n✅ Processed dataset saved to: {output_path}")
+
+# ✅ Count phishing (1) and non-phishing (0) emails
+counts = processed_df["phishing"].value_counts()
+
+print("📊 Email Distribution:")
+print(f"Non-Phishing (0): {counts.get(0, 0)}")
+print(f"Phishing     (1): {counts.get(1, 0)}")
+
+
+print(processed_df.columns)
