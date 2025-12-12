@@ -1,0 +1,11 @@
+# STEP 5: SAVE MODEL and VECTORIZER
+# ---------------------------------
+import joblib
+
+# Save the trained Logistic Regression model
+joblib.dump(models["Logistic Regression"], "phishing_model.pkl")
+
+# Save the TF-IDF vectorizer
+joblib.dump(vectorizer, "tfidf_vectorizer.pkl")
+
+print("✅ Model and vectorizer saved successfully.")
